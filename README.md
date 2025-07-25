@@ -56,7 +56,3 @@
 ---
 
 ## ⚙️ Как использовать
-
-1. Импортируй функции из файла:
-```python
-from ab_test_framework import box_plot, bootstrap, group_size, ...
