@@ -1,53 +1,49 @@
-import random
 
 import pandas as pd
 import numpy as np
+import math
 from datetime import datetime
 
-import scipy.stats
 from scipy import stats
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-#Как можно дополнить?
-# 1) Строить график Q-Q plot
-
-
-# Design of the experiment
+# Plan of the experiment
 # What type of metric?
-metric_type = input(f'Do we use RATIO METRIC (Yes/No):')
 
-if metric_type == 'Yes':
-    # BOOTSTRAP
-    bootstrap = input(f'Do we use BOOTSTRAP? (Yes/No):')
-    if bootstrap == 'No':
-        # DELTA-METHOD
-        delta_method = input(f'Do we use DELTA-METHOD? (Yes/No):')
-        if delta_method == 'No':
-            # LINEARISATION
-            linearisation = input(f'Do we use LINEARISATION? (Yes/No):')
-#### Строим графики, чтобы визуально оценить выборку (функции box_plot(df), histogram(df), scatter_plot(df))
-            # OUTLIERS
-            outliers = input(f'Do we use OUTLIERS? (Yes/No):')
-            #STRATIFICATION
-            stratification = input(f'Do we use STRATIFICATION? (Yes/No):')
-            # CUPED
-            cuped = input(f'Do we use CUPED? (Yes/No):')
-else:
-#### Строим графики, чтобы визуально оценить выборку (функции box_plot(df), histogram(df), scatter_plot(df)).
-# Если мы хотим провести t - тест для метрики среднего, то необходимо, чтобы выборка была достаточного размера и не сильно
-# скошена. Есть смысл смотреть не только на распределение выборки, но и с помощью бутстрепа посмотреть на распределение среднего
-# выборки. Если среднее распределно нормально, значит ЦПТ работает.
-# В случае метрик не среднего, а, например, квантилей использовать бутстреп
-    # BOOTSTRAP
-    bootstrap = input(f'Do we use BOOTSTRAP? (Yes/No):')
-    if bootstrap == 'No':
-        # OUTLIERS (выбросы несвязанные с экспериментом)
-        outliers = input(f'Do we use outliers? (Yes/No):')
-        # STRATIFICATION (лучше всего использовать когда есть большая разница между стратами)
-        stratification = input(f'Do we use STRATIFICATION? (Yes/No):')
-        # CUPED (есть прошлые данные)
-        cuped = input(f'Do we use CUPED? (Yes/No):')
+# metric_type = input(f'Do we use RATIO METRIC (Yes/No):')
+#
+# if metric_type == 'Yes':
+#     # BOOTSTRAP
+#     bootstrap = input(f'Do we use BOOTSTRAP? (Yes/No):')
+#     if bootstrap == 'No':
+#         # DELTA-METHOD
+#         delta_method = input(f'Do we use DELTA-METHOD? (Yes/No):')
+#         if delta_method == 'No':
+#             # LINEARISATION
+#             linearisation = input(f'Do we use LINEARISATION? (Yes/No):')
+# #### Строим графики, чтобы визуально оценить выборку (функции box_plot(df), histogram(df), scatter_plot(df))
+#             # OUTLIERS
+#             outliers = input(f'Do we use OUTLIERS? (Yes/No):')
+#             #STRATIFICATION
+#             stratification = input(f'Do we use STRATIFICATION? (Yes/No):')
+#             # CUPED
+#             cuped = input(f'Do we use CUPED? (Yes/No):')
+# else:
+# #### Строим графики, чтобы визуально оценить выборку (функции box_plot(df), histogram(df), scatter_plot(df)).
+# # Если мы хотим провести t - тест для метрики среднего, то необходимо, чтобы выборка была достаточного размера и не сильно
+# # скошена. Есть смысл смотреть не только на распределение выборки, но и с помощью бутстрепа посмотреть на распределение среднего
+# # выборки. Если среднее распределно нормально, значит ЦПТ работает.
+# # В случае метрик не среднего, а, например, квантилей использовать бутстреп
+#     # BOOTSTRAP
+#     bootstrap = input(f'Do we use BOOTSTRAP? (Yes/No):')
+#     if bootstrap == 'No':
+#         # OUTLIERS (выбросы несвязанные с экспериментом)
+#         outliers = input(f'Do we use outliers? (Yes/No):')
+#         # STRATIFICATION (лучше всего использовать когда есть большая разница между стратами)
+#         stratification = input(f'Do we use STRATIFICATION? (Yes/No):')
+#         # CUPED (есть прошлые данные)
+#         cuped = input(f'Do we use CUPED? (Yes/No):')
 
 # Error Levels and Expected Effect:
 #
@@ -80,16 +76,18 @@ def scatter_plot(df: pd.Series) -> None:
     plt.title('Scatter plot for historical data')
     plt.show()
 
-def QQ_plot(p_values: np.array) -> None:
-    # Сравниваем с uniform(0, 1)
-    stats.probplot(p_values, dist=stats.uniform, plot=plt)
-    plt.title("Q–Q plot: p-value vs Uniform(0,1)")
+def QQ_plot(df: pd.Series) -> None:
+    data = data.dropna()
+    stats.probplot(df, dist="norm", plot=plt)
+    plt.title("Q–Q Plot against Normal distribution")
+    plt.xlabel("Теоретические квантили (N(0,1))")
+    plt.ylabel("Наблюдаемые квантили")
     plt.grid(True)
     plt.show()
 
 #Удаляем выбросы, если это возможно. Будьте внимательны с удалением выбросов. Слишком большие или маленькие значения
-# не всегда являются выбросами. Нужно исходить из логики данных, что выбросы не связаны с экспериментом.
-# И нужно быть внимательными чтобы выбросы не были связаны с проводимым экспериментом:
+# не всегда являются выбросами. Нужно исходить из логики данных.
+# И нужно быть внимательными, чтобы выбросы не были связаны с проводимым экспериментом:
 
 # 1) IQR Удаляем все, что вне усов на Box plot. x < Q1 - 1.5 * IQR или x > Q3 + 1.5 * IQR
 def Outlier_IQR(df: pd.DataFrame) -> pd.DataFrame:
@@ -122,7 +120,9 @@ def process_outliers(df: pd.DataFrame, bounds: tuple[float, float], outlier_proc
 # в зависимости от метрики используем нужный статистический критерий
 #В случае, если мы хотим оценить sample size то нам понадобятся пред-предэкспериментальные данные и предэкспериментальные
 def calculate_cuped_metric(df_metric: pd.DataFrame, df_cov: pd.DataFrame) -> pd.DataFrame:
-    """Считает значения cuped-метрики.
+    """Считает значения cuped-метрики. Расчет ведется на всех данных: контрольной и экспериментальной групп.
+    Мы считаем, что влияние эксперимента на ковариацию незначительно. В более строгом случае можно рассчитывать параметр
+    theta только на данных из контрольной группы
 
     :param df_metric (pd.DataFrame): таблица со значениями метрики во время эксперимента
         со столбцами ['user_id', 'metric'].
@@ -179,7 +179,7 @@ def var_delta_method(df: pd.DataFrame) -> float:
 # 5) Оценить размер групп
 
 # На исторических данных при подготовке эксперимента коэффициент при линеаризации мы рассчитываем на всех данных
-# для больше точности
+# для большей точности
 
 def calculate_linearized_metrics(df: pd.DataFrame) -> pd.DataFrame:
     """Считает значения линеаризованной метрики.
@@ -214,6 +214,8 @@ def var_norm(df: pd.DataFrame) -> float:
     return np.var(df['metric'])
 
 # Дисперсия для стратифицированных данных:
+# В случай отсутствия возможно провести стратификацию, но при проведелении эксперимента будете использовать постстратификацию,
+# то оценивать размер групп нужно по нестратифицированным данным, тогда можно брать консервативную оценку размера групп
 def stratified_var(df: pd.DataFrame) -> float:
     """param df(pd.DataFrame): ['user_id', 'metric', 'strat'] """
     weights = stratified_weights(df)
@@ -224,12 +226,18 @@ def stratified_var(df: pd.DataFrame) -> float:
 
 
 #############################################
-#SAMPLE SIZE. Knowing the error levels, MDE, and variance, we can calculate on historical data: Sample size
-def group_size(df: pd.Series, alpha: float, beta: float, mde: float) -> int:
+# SAMPLE SIZE. Knowing the error levels, MDE, and variance, we can calculate on historical data: Sample size
+# При условии равных дисперсий в группах:
+def group_size_equal_var(var: float, alpha: float, beta: float, mde: float) -> int:
     t_alpha = stats.norm.ppf(1 - alpha/2)
     t_beta = stats.norm.ppf(1 - beta)
-    sigma = df.var(ddof=0)
-    return 2 * sigma * (t_alpha + t_beta)** 2 / mde ** 2
+    return math.ceil(2 * var * (t_alpha + t_beta)** 2 / mde ** 2)
+
+# При условии разных дисперсий в группах:
+def group_size(var_a: float, var_b: float, alpha: float, beta: float, mde: float) -> int:
+    t_alpha = stats.norm.ppf(1 - alpha/2)
+    t_beta = stats.norm.ppf(1 - beta)
+    return math.ceil((var_a + var_b) * (t_alpha + t_beta)** 2 / mde ** 2)
 
 #MDE. Knowing the error levels, sample size, and variance, we can calculate on historical data: MDE
 def mde(df: pd.Series, alpha: float, beta: float, n: int) -> float:
@@ -261,6 +269,7 @@ def bootstrap_central_ci(point_estimate: float, boots_metrics: np.array, alpha: 
     right = 2 * point_estimate - np.quantile(boots_metrics, alpha / 2)
     return left, right
 
+# Бутстреп для квантиля. Доверительный интервал оценивается как персентиль
 def bootstrap(df_control: np.array, df_test: np.array, quantile: float, iter=2000) -> tuple:
     metric = np.quantile(df_test, quantile) - np.quantile(df_control, quantile)
     boots_metric = []
@@ -269,12 +278,11 @@ def bootstrap(df_control: np.array, df_test: np.array, quantile: float, iter=200
         b = np.random.choice(df_test, len(df_test), replace=True)
         boots_metric.append(np.quantile(b, quantile) - np.quantile(a, quantile))
     boots_metric = np.array(boots_metric)
-    left, right = bootstrap_percentile_ci(boots_metric)
+    left, right = bootstrap_percentile_ci(boots_metric, alpha=0.05)
     return left, right
 
 # Оценим размер групп для сильно скошенных данных с помощью бутстрепа. Находим ошибки 1-го и 2-го рода.
-
-def group_size_bootstrap(df: pd.DataFrame, alpha: float=0.05, beta: float=0.2, effect_add_type='all_const', effect=2, iter=3000) -> int:
+def group_size_bootstrap(df: pd.DataFrame, effect_add_type='all_const', effect=2, iter=3000) -> dict:
     """df (pd.DataFrame) -  данные ['user_id, 'metric'], в которых user_id уникальное значение;"""
     p_value = {}
     # p_value[0] - значение p_value А/А тест
@@ -306,7 +314,10 @@ def group_size_bootstrap(df: pd.DataFrame, alpha: float=0.05, beta: float=0.2, e
 CHECKING DESIGN
 ###############
 # Для данных (при необходимости преобразованных, с повышением чувствительности) проводим А/А и А/В тесты для групп найденного
-# размера
+# размера. Функция сделана без учета стратификации. В случае, если необходимо проверить дизайн со стратификацией,
+# нужно применить стратифицированное семплирование и постстратификацию с помощью функции get_ttest_strat_pvalue.
+# В случае delta-method для метрики отношения расчитывем разность метрик отношения для обеих выборок и считаем диспресию
+# с помощью функции var_delta_method и рассчитывем p_value. В данной функции это пока не реализовано.
 
 def estimate_errors(df: pd.DataFrame, effect: float, n: int, effect_add_type: str ='all_const', alpha: float=0.05, iter: int = 5000):
     """df (pd.DataFrame) -  данные ['user_id, 'metric'], в которых user_id уникальное значение;
@@ -346,7 +357,7 @@ def estimate_errors(df: pd.DataFrame, effect: float, n: int, effect_add_type: st
 
 #С помощью функции plot_pvalue_hist_ecdf мы можем посмотреть распределение p-value полученных в estimate_errors:
 #График распределения p_value и гистограмма распределения
-def plot_pvalue_hist_ecdf(pvalues: np.array):
+def plot_pvalue_hist_ecdf(pvalues: np.array) -> None:
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12,4))
     sns.histplot(pvalues, ax=ax1, bins=20, stat='density')
     ax1.plot([0, 1], [1, 1], 'k--')
@@ -365,6 +376,57 @@ def plot_pvalue_hist_ecdf(pvalues: np.array):
 ###################
 
 
+# POSTSTRATIFIED Считаем p_value и использованием постстратификации для метрики среднего с использованием t-test.
+def get_ttest_strat_pvalue(metrics_strat_a_group: pd.DataFrame, metrics_strat_b_group: pd.DataFrame) -> float:
+    """Применяет постстратификацию, возвращает pvalue.
+
+    Веса страт считаем по данным обеих групп.
+    Предполагаем, что эксперимент проводится на всей популяции.
+    Веса страт нужно считать по данным всей популяции.
+
+    :param metrics_strat_a_group (pd.DataFrame): значения метрик и страт группы A.
+        shape = (n, 2), columns=['metrics', 'strats'].
+    :param metrics_strat_b_group (pd.DataFrame): значения метрик и страт группы B .
+        shape = (n, 2), columns=['metrics', 'strats'].
+    :return (float): значение p-value
+    """
+    # YOUR_CODE_HERE
+    metrics = pd.concat([metrics_strat_a_group, metrics_strat_b_group], axis=0)
+    weights = metrics['strats'].value_counts(normalize=True)
+    metric_a = 0
+    metric_b = 0
+    var_a = 0
+    var_b = 0
+    for weight in weights.index:
+        metric_a += metrics_strat_a_group.loc[metrics_strat_a_group['strats'] == weight, 'metrics'].mean() * weights[weight]
+        var_a += metrics_strat_a_group.loc[metrics_strat_a_group['strats'] == weight, 'metrics'].var() * weights[weight]
+        metric_b += metrics_strat_b_group.loc[metrics_strat_b_group['strats'] == weight, 'metrics'].mean() * weights[weight]
+        var_b += metrics_strat_b_group.loc[metrics_strat_b_group['strats'] == weight, 'metrics'].var() * weights[weight]
+    t_stat = abs(metric_a - metric_b) / (var_a / len(metrics_strat_a_group) + var_b / len(metrics_strat_b_group)) ** 0.5
+    p_value = stats.norm.sf(t_stat) * 2
+    return p_value
+
+# Тест Манна-Уитни. Не забываем, что группы должны иметь одинаковые формы распределений. Не должно быть много совпадающих значений
+
+def mannwhitney_ab_test(a: np.ndarray, b: np.ndarray, alternative: str = 'two-sided') -> float:
+    """
+    Проводит A/B тест с помощью критерия Манна–Уитни.
+
+    :param a: Метрики группы A (1D array-like)
+    :param b: Метрики группы B (1D array-like)
+    :param alternative: Направление теста:
+        - 'two-sided' (по умолчанию): различие в любую сторону
+        - 'less': гипотеза, что группа A < группы B
+        - 'greater': гипотеза, что группа A > группы B
+
+    :return: p-value теста
+    """
+    stat, p_value = mannwhitneyu(a, b, alternative=alternative)
+    return p_value
+
+
+# Функция стратификации для распределения данных по группам (контрольная и экспериментальная)
+# Не стоит делать слишком много групп при стратификации, размеры групп не должны быть слишком маленькими
 def split_stratified(df: pd.DataFrame) -> pd.DataFrame:
     """Распределяет объекты по группам (контрольная и экспериментальная).
     :param df(pd.DataFrame): df с разбиением на страты [[user_id, strat]].
